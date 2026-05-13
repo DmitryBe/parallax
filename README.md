@@ -35,6 +35,10 @@ parallax deploy config/qwen2.5-7b.yaml
 # Or with a custom Modal app name:
 parallax deploy config/qwen2.5-7b.yaml --name parallax-prod
 
+# Override GPU type / count from the YAML (handy for capacity testing):
+parallax deploy config/qwen2.5-7b.yaml --gpu H100 --name parallax-h100
+parallax deploy config/qwen2.5-14b.yaml --gpu A100-80GB --gpu-count 2 --name parallax-14b-tp2
+
 # 3. Inspect config without deploying
 parallax info config/qwen2.5-7b.yaml
 

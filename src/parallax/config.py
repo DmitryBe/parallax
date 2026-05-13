@@ -62,7 +62,16 @@ class ModelConfig:
                 Path(__file__).resolve().parent.parent.parent / path,
             ]
             p = next((c for c in candidates if c.exists()), candidates[0])
-        return cls.load(p)
+        cfg = cls.load(p)
+        # Env overrides — set by the CLI (--gpu, --gpu-count) or by hand
+        if (g := os.environ.get("PARALLAX_GPU")):
+            cfg.gpu = g
+        if (gc := os.environ.get("PARALLAX_GPU_COUNT")):
+            try:
+                cfg.gpu_count = int(gc)
+            except ValueError as e:
+                raise ValueError(f"PARALLAX_GPU_COUNT must be int, got {gc!r}") from e
+        return cfg
 
     def vllm_args(self) -> list[str]:
         """Convert config into vLLM CLI/engine-arg list."""

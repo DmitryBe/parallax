@@ -34,15 +34,27 @@ def _validate_config(config_path: str) -> Path:
     return p
 
 
-def _run_modal(modal_subcmd: str, config: Path, name: str | None) -> int:
+def _run_modal(
+    modal_subcmd: str,
+    config: Path,
+    name: str | None,
+    gpu: str | None = None,
+    gpu_count: int | None = None,
+) -> int:
     env = os.environ.copy()
     env["MODEL_CONFIG"] = str(config)
     if name:
         env["PARALLAX_APP_NAME"] = name
+    if gpu:
+        env["PARALLAX_GPU"] = gpu
+    if gpu_count is not None:
+        env["PARALLAX_GPU_COUNT"] = str(gpu_count)
     cmd = ["modal", modal_subcmd, APP_MODULE_PATH]
-    click.echo(f"$ MODEL_CONFIG={config.name}"
-               f"{' PARALLAX_APP_NAME=' + name if name else ''}"
-               f" {' '.join(cmd)}", err=True)
+    pretty = [f"MODEL_CONFIG={config.name}"]
+    if name: pretty.append(f"PARALLAX_APP_NAME={name}")
+    if gpu: pretty.append(f"PARALLAX_GPU={gpu}")
+    if gpu_count is not None: pretty.append(f"PARALLAX_GPU_COUNT={gpu_count}")
+    click.echo(f"$ {' '.join(pretty)} {' '.join(cmd)}", err=True)
     return subprocess.call(cmd, env=env)
 
 
@@ -52,22 +64,36 @@ def cli() -> None:
     """Parallax — OpenAI-compatible vLLM endpoints on Modal."""
 
 
+_GPU_OPT = click.option(
+    "--gpu", "-g",
+    help="Override GPU type from config (e.g. A10G, A100-40GB, A100-80GB, H100, L4).",
+)
+_GPU_COUNT_OPT = click.option(
+    "--gpu-count", "-G", type=int,
+    help="Override GPU count from config (for tensor parallelism).",
+)
+
+
 @cli.command()
 @click.argument("config", type=click.Path(exists=True, dir_okay=False))
 @click.option("--name", "-n", help="Override Modal app name (default: parallax-<config.name>)")
-def deploy(config: str, name: str | None) -> None:
+@_GPU_OPT
+@_GPU_COUNT_OPT
+def deploy(config: str, name: str | None, gpu: str | None, gpu_count: int | None) -> None:
     """Deploy a model defined by CONFIG (path to YAML) to Modal."""
     cfg = _validate_config(config)
-    sys.exit(_run_modal("deploy", cfg, name))
+    sys.exit(_run_modal("deploy", cfg, name, gpu, gpu_count))
 
 
 @cli.command()
 @click.argument("config", type=click.Path(exists=True, dir_okay=False))
 @click.option("--name", "-n", help="Override Modal app name")
-def serve(config: str, name: str | None) -> None:
+@_GPU_OPT
+@_GPU_COUNT_OPT
+def serve(config: str, name: str | None, gpu: str | None, gpu_count: int | None) -> None:
     """Hot-reload dev server (ephemeral URL, dies on Ctrl+C)."""
     cfg = _validate_config(config)
-    sys.exit(_run_modal("serve", cfg, name))
+    sys.exit(_run_modal("serve", cfg, name, gpu, gpu_count))
 
 
 @cli.command()
@@ -79,12 +105,18 @@ def stop(app_name: str) -> None:
 
 @cli.command()
 @click.argument("config", type=click.Path(exists=True, dir_okay=False))
-def info(config: str) -> None:
-    """Print the resolved config (validates YAML parsing)."""
+@_GPU_OPT
+@_GPU_COUNT_OPT
+def info(config: str, gpu: str | None, gpu_count: int | None) -> None:
+    """Print the resolved config (with optional --gpu/--gpu-count overrides applied)."""
     from parallax.config import ModelConfig
 
     cfg_path = _validate_config(config)
     cfg = ModelConfig.load(cfg_path)
+    if gpu:
+        cfg.gpu = gpu
+    if gpu_count is not None:
+        cfg.gpu_count = gpu_count
     click.echo(f"Config: {cfg_path}")
     click.echo(f"  app name:        parallax-{cfg.name}")
     click.echo(f"  model:           {cfg.hf_model_id}")

@@ -18,6 +18,7 @@ What's shipped, what's next, what's deliberately out of scope.
 - **Fix `/version` route shadowing** — vLLM registers its own `/version` that takes precedence over ours; rename to `/parallax/version` or register before `build_app`
 - **Health check endpoint** — return engine status, current `max_num_seqs` utilization, queue depth (useful for caller-side adaptive concurrency)
 - **Cost-aware logging** — log per-request token counts and accumulated $ to Modal's logs (so cost shows up in dashboards without extra plumbing)
+- **GPU memory snapshot** — currently blocked: requires architecture refactor from ASGI mount → `@app.cls` with `@modal.enter(snap=True)` lifecycle, plus vLLM `--enable-sleep-mode` + explicit `POST /sleep` before snapshot. See [Modal vLLM snapshot example](https://modal.com/docs/examples/vllm_snapshot). Only worth doing if memory-snapshot A/B shows weight load still dominates cold start.
 
 ## v1.2 — second model
 

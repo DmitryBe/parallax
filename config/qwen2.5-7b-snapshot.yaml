@@ -19,4 +19,4 @@ timeout: 600
 
 # Snapshot flags
 enable_memory_snapshot: true    # snapshot CPU state after imports
-enable_gpu_snapshot: false       # leave off until Modal stabilizes the feature
+enable_gpu_snapshot: false       # requires Cls + sleep-mode refactor — see docs/roadmap.md

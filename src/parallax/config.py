@@ -1,7 +1,7 @@
 """YAML config loader for Parallax model deployments."""
 from __future__ import annotations
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +16,7 @@ class ModelConfig:
     served_model_name: str
 
     # hardware
-    gpu: str = "L4"
+    gpu: str = "A10G"
     gpu_count: int = 1
 
     # vLLM engine
@@ -33,20 +33,35 @@ class ModelConfig:
     allow_concurrent_inputs: int = 256
     timeout: int = 600
 
+    # Cold-start acceleration (opt-in)
+    enable_memory_snapshot: bool = False   # snapshot CPU state after imports
+    enable_gpu_snapshot: bool = False      # snapshot post-engine-init (experimental)
+
     @classmethod
     def load(cls, path: str | Path) -> "ModelConfig":
-        with open(path) as f:
+        p = Path(path).expanduser()
+        if not p.is_absolute():
+            p = (Path.cwd() / p).resolve()
+        with open(p) as f:
             data: dict[str, Any] = yaml.safe_load(f)
         return cls(**data)
 
     @classmethod
     def from_env(cls, default: str = "config/qwen2.5-7b.yaml") -> "ModelConfig":
-        """Load config path from MODEL_CONFIG env var, fall back to default."""
+        """Load config path from MODEL_CONFIG env var, fall back to default.
+
+        Used by the Modal app when invoked directly (no CLI). For CLI-driven
+        deploys, the CLI sets MODEL_CONFIG before running `modal deploy`.
+        """
         path = os.environ.get("MODEL_CONFIG", default)
-        # resolve relative to repo root if needed
-        p = Path(path)
+        p = Path(path).expanduser()
         if not p.is_absolute():
-            p = Path(__file__).resolve().parent.parent / p
+            # Try several anchors: CWD, then package root
+            candidates = [
+                Path.cwd() / path,
+                Path(__file__).resolve().parent.parent.parent / path,
+            ]
+            p = next((c for c in candidates if c.exists()), candidates[0])
         return cls.load(p)
 
     def vllm_args(self) -> list[str]:

@@ -16,22 +16,33 @@ modal secret create parallax-api-key PARALLAX_API_KEY=$(cat .api_key.local)
 
 ## Deploy a model
 
-```bash
-# Default (Qwen2.5-7B)
-modal deploy parallax/app.py
+Via the CLI (recommended):
 
-# Different model
-MODEL_CONFIG=config/qwen2.5-14b.yaml modal deploy parallax/app.py
+```bash
+parallax deploy config/qwen2.5-7b.yaml                    # default Modal app name
+parallax deploy config/qwen2.5-7b.yaml --name my-prod     # custom name
+parallax serve  config/qwen2.5-7b.yaml --name dev         # dev URL with hot reload
+parallax info   config/qwen2.5-7b.yaml                    # inspect resolved config
+parallax stop   my-prod                                    # stop deployment
 ```
 
-The Modal app name is derived from `name:` in the YAML. Deploying again with the same config updates the existing app (zero downtime: Modal swaps in the new image, old containers drain).
+Or directly with `modal` (CLI is just a thin env-var wrapper):
+
+```bash
+MODEL_CONFIG=config/qwen2.5-7b.yaml modal deploy src/parallax/app.py
+MODEL_CONFIG=config/qwen2.5-7b.yaml PARALLAX_APP_NAME=my-prod modal deploy src/parallax/app.py
+```
+
+Deploying again with the same config updates the existing app (zero downtime: Modal swaps in the new image, old containers drain).
 
 ## Dev / debug
 
-`modal serve` gives a hot-reload dev URL + streaming logs. URL has `-dev` suffix and dies when the command exits.
+`parallax serve` (or `modal serve src/parallax/app.py`) gives a hot-reload dev URL + streaming logs. URL has `-dev` suffix and dies when the command exits.
 
 ```bash
-modal serve parallax/app.py
+parallax serve config/qwen2.5-7b.yaml
+# or with custom name:
+parallax serve config/qwen2.5-7b.yaml --name dev-test
 ```
 
 The URL pattern is:

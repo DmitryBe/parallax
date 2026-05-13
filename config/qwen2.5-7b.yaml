@@ -1,11 +1,10 @@
 # Parallax model config — Qwen2.5-7B-Instruct on A10G
-# (Qwen3.5-9B requires bleeding-edge transformers; using stable Qwen2.5-7B for v1)
 name: qwen2.5-7b
 hf_model_id: Qwen/Qwen2.5-7B-Instruct
 served_model_name: qwen2.5-7b  # what /v1/models reports
 
 # Hardware
-gpu: A10G            # Modal GPU type
+gpu: A10G
 gpu_count: 1
 
 # vLLM engine args
@@ -18,6 +17,12 @@ guided_decoding_backend: xgrammar
 
 # Modal runtime
 min_containers: 0
-scaledown_window: 300        # seconds idle before scale-to-zero
-allow_concurrent_inputs: 256  # match max-num-seqs
+scaledown_window: 300         # seconds idle before scale-to-zero
+allow_concurrent_inputs: 256  # match max_num_seqs
 timeout: 600                  # request timeout in seconds
+
+# Cold-start acceleration (optional)
+# enable_memory_snapshot: snapshot CPU state after imports -> ~5-10x faster Python boot
+# enable_gpu_snapshot:    experimental; snapshot post-engine-init (may require Modal beta access)
+enable_memory_snapshot: false
+enable_gpu_snapshot: false

@@ -23,26 +23,36 @@ Parallax exposes any open-weight LLM (Qwen, Mistral, Llama, etc.) as an OpenAI-c
 ```bash
 git clone https://github.com/DmitryBe/parallax.git
 cd parallax
+pip install -e .                   # installs the `parallax` CLI
 
-# 1. Generate + store the API key
+# 1. Generate + store the shared API key
 python3 -c "import secrets; print(secrets.token_urlsafe(32))" > .api_key.local
 modal secret create parallax-api-key PARALLAX_API_KEY=$(cat .api_key.local)
 
-# 2. Deploy the default model (Qwen2.5-7B on A10G)
-modal deploy parallax/app.py
+# 2. Deploy a model (CLI)
+parallax deploy config/qwen2.5-7b.yaml
 
-# 3. Smoke test through DSPy
+# Or with a custom Modal app name:
+parallax deploy config/qwen2.5-7b.yaml --name parallax-prod
+
+# 3. Inspect config without deploying
+parallax info config/qwen2.5-7b.yaml
+
+# 4. Hot-reload dev server (ephemeral URL):
+parallax serve config/qwen2.5-7b.yaml
+
+# 5. Stop a deployment
+parallax stop parallax-qwen2.5-7b
+
+# 6. Smoke test through DSPy
 PARALLAX_URL=https://<workspace>--parallax-qwen2-5-7b-serve.modal.run \
 PARALLAX_API_KEY=$(cat .api_key.local) \
 python tests/test_dspy.py
-```
 
-Expected output:
-```
-[1/3] raw LM call...                 -> ['hello']
-[2/3] typed signature — relevance... -> True / False
-[3/3] graded score signature...      -> 2
-All DSPy smoke tests passed.
+# 7. Or with curl (see examples/curl_examples.sh)
+PARALLAX_URL=https://<workspace>--parallax-qwen2-5-7b-serve.modal.run \
+PARALLAX_API_KEY=$(cat .api_key.local) \
+bash examples/curl_examples.sh
 ```
 
 ## Calling Parallax
@@ -101,7 +111,7 @@ Configured in [`config/`](./config). Currently shipping:
 |---|---|---|---|---|
 | `qwen2.5-7b` | `Qwen/Qwen2.5-7B-Instruct` | A10G 24GB bf16 | 2048 | v1 default — strong multilingual, Apache 2.0 |
 
-**Adding a new model:** copy `config/qwen2.5-7b.yaml`, edit `hf_model_id`, `gpu`, `max_model_len`, then `MODEL_CONFIG=config/<your-config>.yaml modal deploy parallax/app.py`.
+**Adding a new model:** copy `config/qwen2.5-7b.yaml`, edit `hf_model_id`, `gpu`, `max_model_len`, then `parallax deploy config/<your-config>.yaml`.
 
 ## Performance & cost
 
@@ -127,20 +137,23 @@ Quality: **100% agreement with Claude Haiku 4.5** on a 100-pair mixed-difficulty
 ```
 parallax/
 ├── README.md                   # this file
-├── pyproject.toml
-├── parallax/                   # the Modal app
+├── pyproject.toml              # installs `parallax` CLI
+├── src/parallax/               # the package (src layout)
+│   ├── cli.py                  # `parallax deploy/serve/stop/info`
 │   ├── app.py                  # Modal entrypoint + vLLM mount + auth shim
 │   ├── config.py               # YAML config loader
 │   └── __init__.py
 ├── config/                     # one YAML per model deployment
-│   └── qwen2.5-7b.yaml
+│   ├── qwen2.5-7b.yaml
+│   └── qwen2.5-7b-snapshot.yaml   # same model + memory snapshot enabled
 ├── tests/
 │   └── test_dspy.py            # DSPy + LiteLLM smoke tests
 ├── bench/
 │   ├── throughput.py           # tokens/sec + $/M cost benchmark
 │   └── quality_ab.py           # Parallax vs Claude Haiku agreement
 ├── examples/
-│   └── dspy_relevance.py       # minimal DSPy labeling example
+│   ├── dspy_relevance.py       # minimal DSPy labeling example
+│   └── curl_examples.sh        # raw HTTP examples
 └── docs/                       # see "Project docs" above
 ```
 

@@ -1,10 +1,11 @@
 """Parallax — OpenAI-compatible vLLM endpoint on Modal.
 
-Deploy:
-  MODEL_CONFIG=config/qwen3-8b.yaml modal deploy parallax/app.py --name parallax-qwen3-8b
+This module is the Modal entrypoint. The CLI (`parallax deploy ...`) sets
+MODEL_CONFIG and optionally PARALLAX_APP_NAME, then invokes `modal deploy`
+on this file.
 
-The model config is read at *deploy time* and baked into the image.
-One Modal app == one model. Add a new model = new config + new deploy.
+For direct deploy without the CLI:
+    MODEL_CONFIG=config/qwen2.5-7b.yaml modal deploy src/parallax/app.py
 """
 from __future__ import annotations
 import os
@@ -16,7 +17,7 @@ from parallax.config import ModelConfig
 # Config (read at deploy time)
 # ---------------------------------------------------------------------------
 CFG = ModelConfig.from_env()
-APP_NAME = os.environ.get("MODAL_APP_NAME", f"parallax-{CFG.name}")
+APP_NAME = os.environ.get("PARALLAX_APP_NAME", f"parallax-{CFG.name}")
 
 # ---------------------------------------------------------------------------
 # Image
@@ -24,7 +25,7 @@ APP_NAME = os.environ.get("MODAL_APP_NAME", f"parallax-{CFG.name}")
 VLLM_IMAGE = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
-        "vllm",  # current stable (0.8.x)
+        "vllm",  # current stable (0.8.x+)
         "fastapi[standard]==0.115.6",
         "huggingface_hub[hf_transfer]==0.27.0",
         "pyyaml==6.0.2",
@@ -32,13 +33,16 @@ VLLM_IMAGE = (
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
     .add_local_python_source("parallax")
     .add_local_dir(
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config"),
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "config",
+        ),
         remote_path="/root/config",
     )
 )
 
 # ---------------------------------------------------------------------------
-# Persistent storage: weights cache + vLLM compile cache
+# Persistent storage
 # ---------------------------------------------------------------------------
 HF_CACHE = modal.Volume.from_name("parallax-hf-cache", create_if_missing=True)
 VLLM_CACHE = modal.Volume.from_name("parallax-vllm-cache", create_if_missing=True)
@@ -57,7 +61,11 @@ API_KEY_SECRET = modal.Secret.from_name(
 app = modal.App(APP_NAME)
 
 
-@app.function(
+# Build kwargs for @app.function based on optional snapshot flags.
+# Memory snapshots speed up cold start by ~5-10x for Python-heavy boot
+# (vLLM has a lot of imports). GPU snapshots are experimental and may
+# require specific Modal flags; only enable if the config asks for it.
+_FN_KWARGS: dict = dict(
     image=VLLM_IMAGE,
     gpu=f"{CFG.gpu}:{CFG.gpu_count}" if CFG.gpu_count > 1 else CFG.gpu,
     volumes={
@@ -69,6 +77,14 @@ app = modal.App(APP_NAME)
     timeout=CFG.timeout,
     min_containers=CFG.min_containers,
 )
+if CFG.enable_memory_snapshot:
+    _FN_KWARGS["enable_memory_snapshot"] = True
+if CFG.enable_gpu_snapshot:
+    # Modal experimental — may be a no-op on workspaces without the feature
+    _FN_KWARGS["experimental_options"] = {"enable_gpu_snapshot": True}
+
+
+@app.function(**_FN_KWARGS)
 @modal.concurrent(max_inputs=CFG.allow_concurrent_inputs)
 @modal.asgi_app()
 def serve():
@@ -116,7 +132,7 @@ def serve():
 
     # -- Auth middleware ----------------------------------------------------
     expected_key = _os.environ["PARALLAX_API_KEY"]
-    PUBLIC_PATHS = {"/health", "/version", "/docs", "/openapi.json", "/redoc"}
+    PUBLIC_PATHS = {"/health", "/parallax/version", "/docs", "/openapi.json", "/redoc"}
 
     class BearerAuth(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
@@ -138,13 +154,16 @@ def serve():
         allow_headers=["*"],
     )
 
-    @vllm_app.get("/version")
-    async def version():
+    # Use /parallax/version to avoid colliding with vLLM's own /version route
+    @vllm_app.get("/parallax/version")
+    async def parallax_version():
         return {
             "app": APP_NAME,
             "model": CFG.served_model_name,
             "hf_model_id": CFG.hf_model_id,
             "max_model_len": CFG.max_model_len,
+            "memory_snapshot": CFG.enable_memory_snapshot,
+            "gpu_snapshot": CFG.enable_gpu_snapshot,
         }
 
     return vllm_app

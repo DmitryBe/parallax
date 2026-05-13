@@ -39,7 +39,7 @@ The URL pattern is:
 https://<workspace>--<app-name-with-dots-as-dashes>-serve-dev.modal.run
 ```
 
-E.g. app `parallax-qwen2.5-7b` → URL `https://careem--parallax-qwen2-5-7b-serve-dev.modal.run`.
+E.g. app `parallax-qwen2.5-7b` → URL `https://<workspace>--parallax-qwen2-5-7b-serve-dev.modal.run`.
 
 ## Useful Modal commands
 

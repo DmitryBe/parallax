@@ -1,0 +1,23 @@
+# Parallax model config — Qwen2.5-7B-Instruct on A10G
+# (Qwen3.5-9B requires bleeding-edge transformers; using stable Qwen2.5-7B for v1)
+name: qwen2.5-7b
+hf_model_id: Qwen/Qwen2.5-7B-Instruct
+served_model_name: qwen2.5-7b  # what /v1/models reports
+
+# Hardware
+gpu: A10G            # Modal GPU type
+gpu_count: 1
+
+# vLLM engine args
+dtype: bfloat16
+max_model_len: 2048
+max_num_seqs: 256
+gpu_memory_utilization: 0.92
+enable_prefix_caching: true
+guided_decoding_backend: xgrammar
+
+# Modal runtime
+min_containers: 0
+scaledown_window: 300        # seconds idle before scale-to-zero
+allow_concurrent_inputs: 256  # match max-num-seqs
+timeout: 600                  # request timeout in seconds

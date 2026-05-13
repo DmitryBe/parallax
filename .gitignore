@@ -1,0 +1,21 @@
+# local secrets
+.api_key.local
+.env
+.env.local
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# editor
+.vscode/
+.idea/
+.DS_Store
+
+# modal
+.modal.toml

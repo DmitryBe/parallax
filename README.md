@@ -148,8 +148,9 @@ parallax/
 │   ├── config.py               # YAML config loader
 │   └── __init__.py
 ├── config/                     # one YAML per model deployment
-│   ├── qwen2.5-7b.yaml
-│   └── qwen2.5-7b-snapshot.yaml   # same model + memory snapshot enabled
+│   ├── qwen2.5-7b.yaml          # 7B / A10G — bulk, fast
+│   ├── qwen2.5-14b-l40s.yaml    # 14B / L40S FP8 — balanced
+│   └── qwen2.5-32b-a100.yaml    # 32B / A100-80GB AWQ — hard reasoning
 ├── tests/
 │   └── test_dspy.py            # DSPy + LiteLLM smoke tests
 ├── bench/

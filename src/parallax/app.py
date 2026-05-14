@@ -19,6 +19,12 @@ from parallax.config import ModelConfig
 CFG = ModelConfig.from_env()
 APP_NAME = os.environ.get("PARALLAX_APP_NAME", f"parallax-{CFG.name}")
 
+# Path to the config file inside the image (mounted at /root/config below).
+# We bake MODEL_CONFIG into the image so the container reads the SAME config
+# we deployed with (otherwise containers fall back to the default).
+_CFG_BASENAME = os.path.basename(os.environ.get("MODEL_CONFIG", "qwen2.5-7b.yaml"))
+_CFG_IN_IMAGE = f"/root/config/{_CFG_BASENAME}"
+
 # ---------------------------------------------------------------------------
 # Image
 # ---------------------------------------------------------------------------
@@ -30,7 +36,7 @@ VLLM_IMAGE = (
         "huggingface_hub[hf_transfer]==0.27.0",
         "pyyaml==6.0.2",
     )
-    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1", "MODEL_CONFIG": _CFG_IN_IMAGE})
     .add_local_python_source("parallax")
     .add_local_dir(
         os.path.join(

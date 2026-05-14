@@ -1,0 +1,33 @@
+# Parallax model config — Qwen2.5-14B-Instruct on L40S (dynamic FP8)
+#
+# KV math (Qwen2.5-14B GQA: 48 layers, 8 KV heads, head_dim 128, bf16 KV):
+#   per-token KV = 2 × 48 × 8 × 128 × 2 ≈ 192 KB
+#   worst-case: 16 seqs × 8192 tokens × 192 KB ≈ 24 GB
+# L40S 48GB × 0.92 util − 14GB (FP8 weights) − 2GB overhead ≈ 28 GB KV budget → fits.
+name: qwen2.5-14b-l40s
+hf_model_id: Qwen/Qwen2.5-14B-Instruct
+served_model_name: qwen2.5-14b
+
+# Hardware
+gpu: L40S
+gpu_count: 1
+
+# vLLM engine args
+dtype: auto                   # let vLLM pick (activations bf16, FP8 weights)
+quantization: fp8             # dynamic FP8 — native tensor cores on L40S
+max_model_len: 8192
+max_num_seqs: 16
+gpu_memory_utilization: 0.92
+enable_prefix_caching: true
+guided_decoding_backend: xgrammar
+
+# Modal runtime
+min_containers: 0
+max_containers: 5
+scaledown_window: 300
+allow_concurrent_inputs: 16
+timeout: 600
+
+# Cold-start acceleration
+enable_memory_snapshot: true
+enable_gpu_snapshot: false

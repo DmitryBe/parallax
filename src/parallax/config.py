@@ -26,6 +26,7 @@ class ModelConfig:
     gpu_memory_utilization: float = 0.92
     enable_prefix_caching: bool = True
     guided_decoding_backend: str = "xgrammar"
+    quantization: str | None = None        # e.g. "fp8" for dynamic FP8 on Ada/Hopper
 
     # Modal runtime
     min_containers: int = 0
@@ -87,4 +88,6 @@ class ModelConfig:
         ]
         if self.enable_prefix_caching:
             args.append("--enable-prefix-caching")
+        if self.quantization:
+            args.extend(["--quantization", self.quantization])
         return args

@@ -1,0 +1,38 @@
+# Parallax model config — Qwen2.5-32B-Instruct on A100-80GB (AWQ-int4)
+#
+# Why AWQ over FP8 on A100:
+#   A100 (Ampere) has no native FP8 tensor cores — vLLM FP8 is emulated,
+#   slower than bf16. AWQ-int4 uses Marlin kernels which ARE native on A100
+#   and give the best speed/memory tradeoff.
+#
+# KV math (Qwen2.5-32B GQA: 64 layers, 8 KV heads, head_dim 128, bf16 KV):
+#   per-token KV = 2 × 64 × 8 × 128 × 2 ≈ 262 KB
+#   worst-case: 16 seqs × 12288 tokens × 262 KB ≈ 50 GB
+# A100-80GB × 0.92 util − 17GB (AWQ weights) − 2GB overhead ≈ 55 GB KV → fits.
+name: qwen2.5-32b-a100
+hf_model_id: Qwen/Qwen2.5-32B-Instruct-AWQ
+served_model_name: qwen2.5-32b
+
+# Hardware
+gpu: A100-80GB
+gpu_count: 1
+
+# vLLM engine args
+dtype: auto                   # AWQ weights, activations bf16
+quantization: awq_marlin      # native Ampere kernels — faster than fp8 on A100
+max_model_len: 12288
+max_num_seqs: 16
+gpu_memory_utilization: 0.92
+enable_prefix_caching: true
+guided_decoding_backend: xgrammar
+
+# Modal runtime
+min_containers: 0
+max_containers: 3             # 32B is pricey, cap tighter than 7B/14B
+scaledown_window: 300
+allow_concurrent_inputs: 16
+timeout: 900                  # 32B is slower per-token, give long requests more room
+
+# Cold-start acceleration
+enable_memory_snapshot: true
+enable_gpu_snapshot: false

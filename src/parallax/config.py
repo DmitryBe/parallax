@@ -29,6 +29,7 @@ class ModelConfig:
 
     # Modal runtime
     min_containers: int = 0
+    max_containers: int | None = None
     scaledown_window: int = 300
     allow_concurrent_inputs: int = 256
     timeout: int = 600

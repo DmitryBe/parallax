@@ -9,20 +9,21 @@ gpu_count: 1
 
 # vLLM engine args
 dtype: bfloat16
-max_model_len: 2048
-max_num_seqs: 256
+max_model_len: 16384
+max_num_seqs: 16
 gpu_memory_utilization: 0.92
 enable_prefix_caching: true
 guided_decoding_backend: xgrammar
 
 # Modal runtime
 min_containers: 0
+max_containers: 5             # cap blast radius / cost; 5 * max_num_seqs = 1280 in-flight ceiling
 scaledown_window: 300         # seconds idle before scale-to-zero
-allow_concurrent_inputs: 256  # match max_num_seqs
+allow_concurrent_inputs: 16   # match max_num_seqs
 timeout: 600                  # request timeout in seconds
 
 # Cold-start acceleration (optional)
 # enable_memory_snapshot: snapshot CPU state after imports -> ~5-10x faster Python boot
 # enable_gpu_snapshot:    experimental; snapshot post-engine-init (may require Modal beta access)
-enable_memory_snapshot: false
+enable_memory_snapshot: true
 enable_gpu_snapshot: false

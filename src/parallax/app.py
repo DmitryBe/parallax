@@ -77,6 +77,8 @@ _FN_KWARGS: dict = dict(
     timeout=CFG.timeout,
     min_containers=CFG.min_containers,
 )
+if CFG.max_containers is not None:
+    _FN_KWARGS["max_containers"] = CFG.max_containers
 if CFG.enable_memory_snapshot:
     _FN_KWARGS["enable_memory_snapshot"] = True
 if CFG.enable_gpu_snapshot:
